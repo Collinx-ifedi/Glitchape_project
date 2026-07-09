@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GlitchApe — AI Fashion Studio</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            matte: '#000000',
+            surface: '#0A0A0A',
+            aqua: '#00F0FF',
+            silver: '#9CA3AF'
+          },
+          fontFamily: {
+            display: ['"Space Grotesk"', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+  <style>
+    :root{
+      --bg: #000000;
+      --surface: #0A0A0A;
+      --accent: #00F0FF;
+      --muted: rgba(255,255,255,0.45);
+      --rounded: 14px;
+    }
+    /* Removed overflow: hidden to allow scrolling on home page */
+    html, body {
+      height: 100%;
+    }
+    body{
+      margin:0;
+      font-family: "Space Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background:
+        radial-gradient(1000px 400px at 10% 8%, rgba(0,240,255,0.02), transparent),
+        linear-gradient(180deg, var(--bg), #050505);
+      background-attachment: fixed;
+      color: rgba(255,255,255,0.94);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      overflow-x: hidden;
+    }
+
+    /* Glass card */
+    .glass {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid rgba(255,255,255,0.04);
+      backdrop-filter: blur(8px) saturate(1.05);
+      border-radius: var(--rounded);
+    }
+
+    /* Buttons */
+    .btn-accent {
+      background: linear-gradient(90deg, var(--accent), rgba(0,240,255,0.6));
+      color: white;
+      font-weight:700;
+      border-radius:10px;
+      padding:.6rem 1rem;
+      transition: transform .18s ease, box-shadow .18s ease, opacity .18s;
+      box-shadow: 0 8px 30px rgba(0,240,255,0.06);
+      border: none;
+      cursor: pointer;
+    }
+    .btn-accent:hover { transform: translateY(-3px); box-shadow: 0 14px 40px rgba(0,240,255,0.12); }
+    .btn-glass { padding:.6rem 1rem; border-radius:10px; border:1px solid rgba(255,255,255,0.04); background:transparent; cursor: pointer; }
+
+    /* shimmer */
+    .shimmer {
+      background-image: linear-gradient(120deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 100%);
+      background-size: 300% 100%;
+      animation: shimmer 6s linear infinite;
+    }
+    @keyframes shimmer { 0% { background-position: -200% 0 } 100% { background-position: 200% 0 } }
+
+    /* portal */
+    @keyframes portalExpand { 0%{transform:scale(0);opacity:1} 80%{opacity:.9} 100%{transform:scale(12);opacity:0} }
+    .portal { position:fixed; inset:0; pointer-events:none; z-index:60; }
+    .portal .ring { position:absolute; width:120px; height:120px; left:50%; top:50%; transform:translate(-50%,-50%); border-radius:999px; background: radial-gradient(circle, rgba(0,240,255,0.28), rgba(0,240,255,0.02)); filter: blur(18px); animation: portalExpand 900ms cubic-bezier(.2,.9,.3,1) forwards; }
+
+    /* spinner */
+    @keyframes spin{ from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    .spinner { width:16px;height:16px;border:2px solid rgba(255,255,255,0.18);border-top-color:var(--accent);border-radius:50%;display:inline-block;animation:spin .9s linear infinite;margin-right:8px;vertical-align:middle; }
+    .btn-loading { opacity:.76; cursor:not-allowed; pointer-events:none; transform:scale(.99); }
+
+    /* typing dots */
+    .typing-dot { width:8px;height:8px;border-radius:999px;background:var(--accent);opacity:.22;animation: dot 1.2s infinite;display:inline-block;margin-right:6px; }
+    .typing-dot:nth-child(2){ animation-delay:.12s; } .typing-dot:nth-child(3){ animation-delay:.24s; }
+    @keyframes dot { 0%,60%,100%{ transform:translateY(0); opacity:.22 } 30%{ transform:translateY(-6px); opacity:1 } }
+
+    /* logo glitch */
+    .glitch { position:relative; display:inline-block; }
+    .glitch::before, .glitch::after { content: attr(data-text); position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; }
+    .glitch::before{ left:2px; text-shadow:-2px 0 rgba(0,240,255,0.9); color:rgba(0,240,255,0.9); mix-blend-mode:screen; opacity:.9 }
+    .glitch::after{ left:-2px; text-shadow:2px 0 rgba(255,100,180,0.06); color:rgba(255,255,255,0.9); mix-blend-mode:screen; opacity:.9 }
+    .glitch.flicker::before, .glitch.flicker::after { animation: flicker 600ms linear infinite; }
+    @keyframes flicker { 0%{opacity:1;transform:translateX(0)}30%{opacity:.2;transform:translateX(-6px) skewX(-6deg)}60%{opacity:1;transform:translateX(2px)}100%{opacity:1;transform:translateX(0)} }
+
+    .logo-letter { display:inline-block; will-change:transform,opacity; }
+
+    /* Custom scrollbar styling */
+    .custom-scrollbar::-webkit-scrollbar { width:10px; height:10px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--accent), #00b9c7); border-radius:999px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+
+    /* Global scrollbar fallback */
+    ::-webkit-scrollbar { width:10px; height:10px; }
+    ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--accent), #00b9c7); border-radius:999px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+
+    .muted { color: var(--muted); }
+    .typer { display:inline-block; border-right:2px solid rgba(255,255,255,0.08); padding-right:6px; margin-left:6px; animation: caret 900ms steps(1) infinite;}
+    @keyframes caret { 50% { border-color: transparent } 100% { border-color: rgba(255,255,255,0.08) } }
+
+    /* Updated chat input container with new textarea styling */
+    .chat-input-container {
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      padding: 0;
+    }
+
+    #chatInput {
+      flex: 1;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: #050505;
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.94);
+      font-family: inherit;
+      font-size: 14px;
+      resize: none;
+      max-height: 120px;
+      min-height: 44px;
+      transition: border-color 0.2s, height 0.2s;
+      line-height: 1.5;
+    }
+
+    #chatInput:focus {
+      outline: none;
+      border-color: rgba(0,240,255,0.3);
+    }
+
+    /* New circular aqua send button with SVG icon */
+    #sendBtn {
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      min-height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(90deg, var(--accent), rgba(0,240,255,0.6));
+      color: #001018;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      transition: all 0.2s;
+      box-shadow: 0 4px 15px rgba(0,240,255,0.2);
+      flex-shrink: 0;
+    }
+
+    #sendBtn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,240,255,0.3);
+    }
+
+    #sendBtn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    #uploadBtn {
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      min-height: 44px;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid rgba(0,240,255,0.3);
+      cursor: pointer;
+      font-size: 18px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    #uploadBtn:hover {
+      background: rgba(0,240,255,0.1);
+      border-color: rgba(0,240,255,0.6);
+    }
+
+    /* Full-screen chat layout */
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100%;
+      overflow: hidden; /* Ensure container doesn't scroll, only messages do */
+    }
+
+    .chat-header {
+      flex-shrink: 0;
+      padding: 16px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto; /* Enable vertical scrolling for messages */
+      overflow-x: hidden; /* Prevent horizontal scroll */
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 0; /* Critical: allows flex child to shrink below content size */
+    }
+
+    .chat-footer {
+      flex-shrink: 0;
+      padding: 20px 24px;
+      border-top: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .bubble-user {
+      background: rgba(0,240,255,0.15);
+      border: 1px solid rgba(0,240,255,0.3);
+      color: rgba(255,255,255,0.94);
+      margin-left: auto;
+      max-width: 70%;
+      word-wrap: break-word;
+    }
+
+    .bubble-ai {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.94);
+      max-width: 70%;
+      word-wrap: break-word;
+    }
+
+    /* Image display in chat bubbles */
+    .bubble-user img, .bubble-ai img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin-top: 8px;
+      display: block;
+    }
+
+    @media (max-width:768px){
+      .hero-title{ font-size:2.1rem }
+      .mobile-cta { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); z-index:60; }
+      .bubble-user, .bubble-ai { max-width: 85%; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="particleCanvas" class="absolute inset-0 pointer-events-none z-0"></canvas>
+
+  <div class="relative z-10 min-h-screen flex flex-col">
+
+    <!-- Refactored header with authNav/mainNav structure for clean UI state management -->
+    <header class="w-full glass px-6 py-4 flex items-center justify-between sticky top-0 z-40">
+      <div class="flex items-center gap-4">
+        <div class="h-10 w-10 rounded-lg bg-gradient-to-br from-[#071016] to-[#0a0b0c] flex items-center justify-center border border-white/5">
+          <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/1758291322659-removebg-preview-ZLxQoE0lEfepwsJaF9fJ73s85CnouS.png" alt="logo" class="h-7 w-7 object-cover rounded">
+        </div>
+        <div>
+          <div id="brand" class="text-lg font-semibold tracking-tight">GlitchApe</div>
+          <div class="text-xs muted">AI Fashion Studio</div>
+        </div>
+      </div>
+
+      <!-- Main navigation (shown on home) -->
+      <div id="mainNav" class="flex items-center gap-3">
+        <button id="homeLoginBtn" class="btn-glass text-sm">Login / Register</button>
+        <button id="startDesigningBtn" class="btn-accent text-sm shimmer">Enter the Portal</button>
+      </div>
+
+      <!-- Auth navigation (shown in chat) -->
+      <div id="authNav" class="flex gap-2 items-center hidden">
+        <button id="homeBtn" class="btn-glass px-4 py-2 text-sm">🏠 Home</button>
+        <button id="checkoutBtn" class="btn-accent px-4 py-2 text-sm">Checkout</button>
+      </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl mx-auto w-full px-6 py-10 relative z-10 overflow-y-auto">
+      <!-- designSection now uses fixed positioning with proper z-index and bg-surface -->
+      <section id="homeSection" class="min-h-screen grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+        <div class="space-y-6">
+          <div class="overflow-hidden">
+            <h1 class="hero-title text-5xl md:text-7xl font-bold leading-tight">
+              <span class="inline-block mr-2 muted">Design your</span>
+              <span id="glitchLogo" class="inline-block"></span>
+            </h1>
+          </div>
+
+          <p class="text-lg muted max-w-2xl" data-aos="fade-right" data-aos-delay="200">
+            Create couture with intelligence — generate unique garments, refine them instantly, and order production-ready pieces.
+          </p>
+
+          <div class="flex gap-4 items-center" data-aos="fade-up" data-aos-delay="400">
+            <button id="ctaStart" class="btn-accent px-6 py-3 shimmer">Enter the Portal</button>
+            <button id="ctaExplore" class="btn-glass px-5 py-3">Explore Gallery</button>
+            <span class="ml-4 muted hidden md:inline">Preview designs without an account</span>
+          </div>
+
+          <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="glass p-4 rounded-lg" data-aos="fade-up" data-aos-delay="500">
+              <div class="text-xs muted">New</div>
+              <div class="font-semibold mt-1">Faster AI generator</div>
+              <div class="muted text-sm mt-1">Higher variety with fewer prompts.</div>
+            </div>
+            <div class="glass p-4 rounded-lg" data-aos="fade-up" data-aos-delay="600">
+              <div class="text-xs muted">Creators</div>
+              <div class="font-semibold mt-1">Seamless checkout</div>
+              <div class="muted text-sm mt-1">From idea to order in a few clicks.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div class="glass rounded-xl overflow-hidden" data-aos="zoom-in">
+            <div class="aspect-w-16 aspect-h-9 bg-gradient-to-br from-[#071012] to-[#020203] flex items-center justify-center">
+              <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/grok_image_xtdgl9n-O2ZJO6w5aT0bPj2wFxPSn66Llkyf7p.jpg" alt="featured" class="w-full h-full object-cover">
+            </div>
+          </div>
+
+          <div class="flex gap-3">
+            <div class="glass p-2 rounded-lg flex-1 hover:scale-105 transition-transform" data-aos="fade-left">
+              <img src="https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?auto=format&fit=crop&w=1200&q=80" alt="outfit1" class="w-full h-36 object-cover rounded">
+            </div>
+            <div class="glass p-2 rounded-lg flex-1 hover:scale-105 transition-transform" data-aos="fade-right" data-aos-delay="80">
+              <img src="https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=1200&q=80" alt="outfit2" class="w-full h-36 object-cover rounded">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mt-20 space-y-8">
+        <div class="text-center">
+          <h2 class="text-3xl font-bold">What GlitchApe does</h2>
+          <p class="muted mt-2 max-w-2xl mx-auto" data-aos="fade-up">Generative AI tuned for clothing — design, iterate, and order.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+          <div class="glass p-6 rounded-lg" data-aos="fade-left">
+            <div class="text-xl font-semibold">AI-Powered Design</div>
+            <p class="muted mt-2">From text to product-ready artwork.</p>
+          </div>
+          <div class="glass p-6 rounded-lg" data-aos="fade-up" data-aos-delay="120">
+            <div class="text-xl font-semibold">Instant Previews</div>
+            <p class="muted mt-2">Multiple variations in seconds.</p>
+          </div>
+          <div class="glass p-6 rounded-lg" data-aos="fade-right" data-aos-delay="240">
+            <div class="text-xl font-semibold">Seamless Checkout</div>
+            <p class="muted mt-2">Integrated production and payment flow.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="gallerySection" class="mt-20">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-2xl font-semibold">Showcase</h3>
+          <div class="muted text-sm">Click to view</div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div class="glass rounded-lg overflow-hidden p-2" data-aos="zoom-in" data-aos-delay="80">
+            <div class="relative group">
+              <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/grok_image_xtdgl9n-O2ZJO6w5aT0bPj2wFxPSn66Llkyf7p.jpg" alt="model1" class="w-full h-56 object-cover rounded-md transition-transform group-hover:scale-105">
+              <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-md flex items-center justify-center">
+                <button class="btn-accent text-xs">View design</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass rounded-lg overflow-hidden p-2" data-aos="zoom-in" data-aos-delay="160">
+            <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/grok_image_xvgzwgz-eotvPBVP5PbvGChxWogQcTHhoUZmRG.jpg" alt="model2" class="w-full h-56 object-cover rounded-md">
+          </div>
+
+          <div class="glass rounded-lg overflow-hidden p-2" data-aos="zoom-in" data-aos-delay="240">
+            <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/grok_image_r955ty-LUR3WkcREhSP31fBBG3wy23wp1f1TS.jpg" alt="model3" class="w-full h-56 object-cover rounded-md">
+          </div>
+
+          <div class="glass rounded-lg overflow-hidden p-2" data-aos="zoom-in" data-aos-delay="320">
+            <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/grok_image_w4u4kj-QEBstTcYkF86SJOtHsn0UkvtCZDcFH.jpg" alt="model4" class="w-full h-56 object-cover rounded-md">
+          </div>
+        </div>
+      </section>
+
+      <footer class="mt-20 py-10 text-center muted">
+        <div class="max-w-4xl mx-auto space-y-4">
+          <div class="flex items-center justify-center gap-4">
+            <a href="mailto:collins@glitchape.fun" class="hover:text-aqua">collins@glitchape.fun</a>
+            <span class="hidden sm:inline">•</span>
+            <a href="https://X.com/GlitchApeFun" class="hover:text-aqua">@GlitchApeFun</a>
+          </div>
+          <div>
+            <span>Powered by</span>
+            <span id="poweredBy" class="font-semibold"> GlitchApe Intelligence</span>
+            <span id="poweredTyper" class="typer"></span>
+          </div>
+          <div>© 2025 GlitchApe. All rights reserved.</div>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <div id="portalHolder" class="portal hidden"></div>
+
+  <div id="authModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60">
+    <div class="w-full max-w-md mx-auto glass p-6 rounded-xl transform transition-all">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-semibold">Login / Register</h3>
+        <button onclick="closeModal('authModal')" class="text-muted">✕</button>
+      </div>
+
+      <div class="flex gap-2 mb-4">
+        <button id="tabLogin" class="px-3 py-2 rounded-md text-sm bg-transparent border-b-2 border-transparent">Login</button>
+        <button id="tabRegister" class="px-3 py-2 rounded-md text-sm">Register</button>
+      </div>
+
+      <div id="authStatus" class="mb-3 text-sm" aria-live="polite"></div>
+
+      <form id="loginForm" class="space-y-3">
+        <label class="text-xs muted">Email</label>
+        <input type="email" name="email" required class="w-full p-3 rounded-md bg-[#050505] border border-white/6">
+
+        <label class="text-xs muted">Password</label>
+        <input type="password" name="password" required class="w-full p-3 rounded-md bg-[#050505] border border-white/6">
+
+        <div class="flex gap-2">
+          <button type="submit" class="flex-1 btn-accent" id="loginSubmit">Login</button>
+          <button type="button" id="switchToRegister" class="flex-1 btn-glass">Register</button>
+        </div>
+      </form>
+
+      <form id="registerForm" class="space-y-3 hidden">
+        <label class="text-xs muted">Email</label>
+        <input type="email" name="email" required class="w-full p-3 rounded-md bg-[#050505] border border-white/6">
+
+        <label class="text-xs muted">Password</label>
+        <input type="password" name="password" required class="w-full p-3 rounded-md bg-[#050505] border border-white/6">
+
+        <label class="text-xs muted">Confirm</label>
+        <input type="password" name="confirm" required class="w-full p-3 rounded-md bg-[#050505] border border-white/6">
+
+        <div class="flex gap-2">
+          <button type="submit" class="flex-1 btn-accent" id="registerSubmit">Create Account</button>
+          <button type="button" id="switchToLogin" class="flex-1 btn-glass">Back</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="checkoutModal" class="fixed inset-0 z-40 hidden items-center justify-center bg-black/60">
+    <div class="w-full max-w-sm mx-auto glass p-6 rounded-xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold">Checkout</h3>
+        <button onclick="closeModal('checkoutModal')">✕</button>
+      </div>
+      <div class="muted mb-2">Order total</div>
+      <div class="text-2xl font-bold mb-4" id="orderTotal">$0.00</div>
+      <button onclick="initiateCheckout()" class="w-full btn-accent">Proceed to payment</button>
+    </div>
+  </div>
+
+  <div id="verificationModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60">
+    <div class="w-full max-w-md mx-auto glass p-6 rounded-xl transform transition-all">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-semibold">Verify Your Email</h3>
+        <button onclick="closeModal('verificationModal')" class="text-muted">✕</button>
+      </div>
+
+      <p class="text-sm muted mb-4">
+        We've sent a 6-digit verification code to <span id="verificationEmail" class="font-semibold text-white"></span>
+      </p>
+
+      <div id="verificationStatus" class="mb-3 text-sm" aria-live="polite"></div>
+
+      <form id="verificationForm" class="space-y-4">
+        <div>
+          <label class="text-xs muted">Verification Code</label>
+          <input 
+            type="text" 
+            name="code" 
+            id="verificationCode"
+            maxlength="6" 
+            placeholder="000000" 
+            required 
+            class="w-full p-3 rounded-md bg-[#050505] border border-white/6 text-center text-2xl tracking-widest font-mono"
+            inputmode="numeric"
+            pattern="[0-9]{6}"
+          >
+          <div class="text-xs muted mt-1">Enter the 6-digit code from your email</div>
+        </div>
+
+        <div class="flex gap-2">
+          <button type="submit" class="flex-1 btn-accent" id="verifySubmit">Verify</button>
+          <button type="button" id="resendBtn" class="flex-1 btn-glass">Resend Code</button>
+        </div>
+      </form>
+
+      <div class="mt-4 text-center">
+        <button type="button" id="backToLoginBtn" class="text-xs muted hover:text-aqua transition-colors">Back to Login</button>
+      </div>
+
+      <div id="resendCooldown" class="mt-3 text-center text-xs muted hidden">
+        Resend available in <span id="cooldownTimer">60</span>s
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* =================== CONFIG =================== */
+    const API_BASE = 'https://glitchape-by.onrender.com/api'; // Backend base path
+    const API_SERVER_ROOT = 'https://glitchape-by.onrender.com';
+
+    /* =================== STATE =================== */
+    const state = { authToken: null, currentUser: null, currentSession: null };
+
+    /* =================== INIT =================== */
+    document.addEventListener('DOMContentLoaded', () => {
+      initAOS();
+      initGSAP();
+      buildLogo();
+      initParticles();
+      initTyper();
+      setupEventListeners();
+      hydrateFromLocal();
+    });
+
+    /* ========== AOS ========== */
+    function initAOS(){ AOS.init({ duration:900, once:true, easing:'ease-out-quad' }); }
+
+    /* ========== GSAP ========== */
+    function initGSAP(){
+      gsap.registerPlugin(ScrollTrigger);
+      gsap.to('main', { backgroundPosition: '50% 80%', ease:'none', scrollTrigger:{ scrub:1 } });
+    }
+
+    /* ========== PARTICLES ========== */
+    function initParticles(){
+      const canvas = document.getElementById('particleCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let w = canvas.width = innerWidth, h = canvas.height = innerHeight;
+      const particles = [];
+      const COUNT = Math.max(24, Math.floor((w*h)/120000));
+      function rand(a,b){return Math.random()*(b-a)+a}
+      function resize(){ w = canvas.width = innerWidth; h = canvas.height = innerHeight; particles.length=0; for(let i=0;i<COUNT;i++) particles.push({x:rand(0,w),y:rand(0,h),r:rand(.5,2.4),vx:rand(-0.2,0.2),vy:rand(-0.2,0.2),alpha:rand(.02,.12)})}
+      resize(); window.addEventListener('resize', resize);
+      function draw(){ ctx.clearRect(0,0,w,h); for(const p of particles){ p.x+=p.vx; p.y+=p.vy; if(p.x<0)p.x=w;if(p.x>w)p.x=0;if(p.y<0)p.y=h;if(p.y>h)p.y=0; ctx.beginPath(); ctx.fillStyle = `rgba(0,240,255,${p.alpha})`; ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill() } requestAnimationFrame(draw) }
+      draw();
+    }
+
+    /* ========== LOGO ANIMATION ========== */
+    function buildLogo(){
+      const str = 'GlitchApe';
+      const container = document.getElementById('glitchLogo');
+      container.innerHTML = '';
+      str.split('').forEach((ch,i)=>{
+        const s = document.createElement('span');
+        s.className = 'logo-letter text-[2.6rem] md:text-[3.6rem] inline-block mr-0 px-0';
+        s.textContent = ch;
+        container.appendChild(s);
+      });
+      const spans = container.querySelectorAll('.logo-letter');
+      spans.forEach((s,i)=>{
+        s.style.opacity=0;
+        gsap.fromTo(s, {y:60,rotation:(Math.random()*60)-30,opacity:0,scale:.8}, {y:0,rotation:0,opacity:1,scale:1,duration:.72,delay:i*0.06,ease:'back.out(1.6)'});
+      });
+      setTimeout(()=>{ container.classList.add('glitch','flicker'); setTimeout(()=>container.classList.remove('flicker'),1200); }, 900);
+      gsap.to(spans, { y:-3, duration:1.8, yoyo:true, repeat:-1, ease:'sine.inOut', stagger:0.08, delay:1.6 });
+      document.getElementById('brand').textContent = 'GlitchApe';
+    }
+
+    /* ========== FOOTER TYPER ========== */
+    function initTyper(){
+      const words = ['Intelligent','Generative','Couture','Creative','Adaptive'];
+      let idx=0,pos=0,forward=true;
+      const el = document.getElementById('poweredTyper');
+      function step(){
+        const w = words[idx];
+        if(forward){ pos++; el.textContent = ' ' + w.slice(0,pos); if(pos>=w.length){ forward=false; setTimeout(step,700); return; } }
+        else { pos--; el.textContent = ' ' + w.slice(0,pos); if(pos<=0){ forward=true; idx=(idx+1)%words.length; setTimeout(step,300); return; } }
+        setTimeout(step,70);
+      }
+      step();
+    }
+
+    /* ========== UI HELPERS ========== */
+    function openModal(id){ document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+    function showAuthStatus(msg, type='info'){ const el=document.getElementById('authStatus'); el.textContent=msg; el.className = 'mb-3 text-sm ' + (type==='error' ? 'status-error' : type==='success' ? 'status-success' : 'status-info'); }
+    function clearAuthStatus(){ const el=document.getElementById('authStatus'); el.textContent=''; el.className='mb-3 text-sm'; }
+    function showAlert(msg, type='info'){ const container=document.getElementById('alertContainer'); if(!container) return; const el=document.createElement('div'); el.className='p-3 rounded-md ' + (type==='error' ? 'status-error' : type==='success'); el.textContent=msg; container.appendChild(el); setTimeout(()=>el.remove(),4500); }
+
+    /* ========== HYDRATE FROM LOCAL STORAGE ========== */
+    function hydrateFromLocal(){
+      const token = localStorage.getItem('authToken');
+      if (token){ state.authToken = token; try{ state.currentUser = JSON.parse(localStorage.getItem('currentUser')); }catch(e){ state.currentUser=null } }
+    }
+
+    /* ========== EVENTS ==========> */
+    function setupEventListeners(){
+      document.getElementById('homeLoginBtn').addEventListener('click', ()=> openModal('authModal'));
+      document.getElementById('ctaStart').addEventListener('click', handleStartDesigning);
+      document.getElementById('startDesigningBtn').addEventListener('click', handleStartDesigning);
+      document.getElementById('ctaExplore').addEventListener('click', ()=> document.getElementById('gallerySection').scrollIntoView({behavior:'smooth'}));
+
+      // auth toggles
+      document.getElementById('switchToRegister').addEventListener('click', ()=> { document.getElementById('loginForm').classList.add('hidden'); document.getElementById('registerForm').classList.remove('hidden'); clearAuthStatus(); });
+      document.getElementById('switchToLogin').addEventListener('click', ()=> { document.getElementById('registerForm').classList.add('hidden'); document.getElementById('loginForm').classList.remove('hidden'); clearAuthStatus(); });
+      document.getElementById('tabLogin').addEventListener('click', ()=> { document.getElementById('registerForm').classList.add('hidden'); document.getElementById('loginForm').classList.remove('hidden'); });
+      document.getElementById('tabRegister').addEventListener('click', ()=> { document.getElementById('loginForm').classList.add('hidden'); document.getElementById('registerForm').classList.remove('hidden'); });
+
+      // auth submits
+      document.getElementById('loginForm').addEventListener('submit', handleLogin);
+      document.getElementById('registerForm').addEventListener('submit', handleRegister);
+
+      // close modal when clicking backdrop
+      document.addEventListener('click', (e) => {
+        if (e.target.classList && e.target.classList.contains('fixed') && e.target.classList.contains('inset-0')) {
+          e.target.classList.add('hidden');
+        }
+      });
+
+      document.getElementById('verificationForm').addEventListener('submit', handleVerifyCode);
+      document.getElementById('resendBtn').addEventListener('click', handleResendCode);
+      document.getElementById('backToLoginBtn').addEventListener('click', () => {
+        closeModal('verificationModal');
+        openModal('authModal');
+        document.getElementById('loginForm').classList.remove('hidden');
+        document.getElementById('registerForm').classList.add('hidden');
+      });
+    }
+
+    /* ========== PORTAL TRANSITION ========== */
+    function spawnPortalAt(elem){
+      const rect = elem.getBoundingClientRect();
+      const holder = document.getElementById('portalHolder');
+      holder.innerHTML = '';
+      const ring = document.createElement('div'); ring.className='ring';
+      const centerX = rect.left + rect.width/2; const centerY = rect.top + rect.height/2;
+      ring.style.left = `${centerX}px`; ring.style.top = `${centerY}px`;
+      holder.appendChild(ring); holder.classList.remove('hidden');
+      setTimeout(()=> { holder.classList.add('hidden'); holder.innerHTML = '' }, 1000);
+    }
+
+    async function handleStartDesigning(){
+      if (state.authToken){
+        spawnPortalAt(document.getElementById('startDesigningBtn'));
+        setTimeout(()=> { window.location.href = 'chat.html'; }, 420);
+      } else {
+        openModal('authModal');
+      }
+    }
+
+    function closeChatWithPortal(){
+      const homeBtn = document.getElementById('homeBtn');
+      spawnPortalAt(homeBtn || document.getElementById('startDesigningBtn'));
+      setTimeout(()=> { window.location.href = 'index.html'; }, 420);
+    }
+
+    /* ========== AUTH (Login / Register) ========== */
+    async function handleLogin(e){
+      e.preventDefault();
+      const form = e.target;
+      const btn = document.getElementById('loginSubmit');
+      showAuthStatus('🔄 Logging in...', 'info');
+      btn.classList.add('btn-loading'); const orig = btn.innerHTML; btn.innerHTML = '<span class="spinner"></span>Logging in...';
+
+      try {
+        const username = form.email.value; const password = form.password.value;
+        const params = new URLSearchParams(); params.append('username', username); params.append('password', password);
+        const resp = await fetch(`${API_BASE}/auth/login`, { method:'POST', headers:{ 'Accept':'application/json' }, body: params });
+        const data = await resp.json().catch(()=>({}));
+        if (!resp.ok){
+          showAuthStatus('❌ ' + (data.detail || 'Invalid credentials'), 'error');
+          const modal = document.querySelector('#authModal > div'); gsap.fromTo(modal, { x:-8 }, { x:0, duration:0.45, ease:'elastic.out(1,0.6)' });
+          return;
+        }
+        state.authToken = data.access_token;
+        state.currentUser = data.user;
+        localStorage.setItem('authToken', data.access_token);
+        localStorage.setItem('currentUser', JSON.stringify(data.user));
+        showAuthStatus('✅ Logged in successfully', 'success');
+        spawnPortalAt(btn);
+        setTimeout(()=>{ closeModal('authModal'); window.location.href = 'chat.html'; }, 700);
+      } catch (err){
+        showAuthStatus('❌ Network error', 'error');
+      } finally {
+        btn.classList.remove('btn-loading'); btn.innerHTML = 'Login';
+      }
+    }
+
+    async function handleRegister(e){
+      e.preventDefault();
+      const form = e.target;
+      const btn = document.getElementById('registerSubmit');
+      showAuthStatus('⚙️ Registering account...', 'info');
+      btn.classList.add('btn-loading'); btn.innerHTML = '<span class="spinner"></span>Creating...';
+
+      const email = form.email.value; const password = form.password.value; const confirm = form.confirm.value;
+      if (password !== confirm){ showAuthStatus('❌ Passwords do not match', 'error'); btn.classList.remove('btn-loading'); btn.innerHTML='Create Account'; return; }
+
+      try {
+        const fd = new FormData(); fd.append('email', email); fd.append('password', password);
+        const resp = await fetch(`${API_BASE}/auth/register`, { method:'POST', body: fd });
+        const data = await resp.json().catch(()=>({}));
+        if (!resp.ok){
+          showAuthStatus('⚠️ ' + (data.detail || data.message || 'Registration failed'), 'error');
+          return;
+        }
+        showAuthStatus('✅ Registration successful — check your email for verification', 'success');
+        setTimeout(() => {
+          form.reset();
+          openVerificationModal(email);
+          startResendCooldown();
+        }, 800);
+      } catch (err){
+        showAuthStatus('❌ Network error', 'error');
+      } finally {
+        btn.classList.remove('btn-loading'); btn.innerHTML = 'Create Account';
+      }
+    }
+
+    /* ========== VERIFICATION FLOW ========== */
+    let verificationEmail = null;
+    let resendCooldownActive = false;
+
+    function openVerificationModal(email){
+      verificationEmail = email;
+      document.getElementById('verificationEmail').textContent = email;
+      document.getElementById('verificationCode').value = '';
+      document.getElementById('verificationStatus').textContent = '';
+      document.getElementById('verificationStatus').className = 'mb-3 text-sm';
+      closeModal('authModal');
+      openModal('verificationModal');
+      document.getElementById('verificationCode').focus();
+    }
+
+    function showVerificationStatus(msg, type='info'){
+      const el = document.getElementById('verificationStatus');
+      el.textContent = msg;
+      el.className = 'mb-3 text-sm ' + (type==='error' ? 'status-error' : type==='success' ? 'status-success' : 'status-info');
+    }
+
+    function clearVerificationStatus(){
+      const el = document.getElementById('verificationStatus');
+      el.textContent = '';
+      el.className = 'mb-3 text-sm';
+    }
+
+    function startResendCooldown(){
+      resendCooldownActive = true;
+      let seconds = 60;
+      const cooldownEl = document.getElementById('resendCooldown');
+      const timerEl = document.getElementById('cooldownTimer');
+      const resendBtn = document.getElementById('resendBtn');
+      
+      cooldownEl.classList.remove('hidden');
+      resendBtn.disabled = true;
+      resendBtn.style.opacity = '0.5';
+      resendBtn.style.cursor = 'not-allowed';
+
+      const interval = setInterval(() => {
+        seconds--;
+        timerEl.textContent = seconds;
+        if (seconds <= 0) {
+          clearInterval(interval);
+          cooldownEl.classList.add('hidden');
+          resendBtn.disabled = false;
+          resendBtn.style.opacity = '1';
+          resendBtn.style.cursor = 'pointer';
+          resendCooldownActive = false;
+        }
+      }, 1000);
+    }
+
+    async function handleVerifyCode(e){
+      e.preventDefault();
+      const form = e.target;
+      const btn = document.getElementById('verifySubmit');
+      const code = document.getElementById('verificationCode').value.trim();
+
+      if (code.length !== 6 || !/^\d+$/.test(code)) {
+        showVerificationStatus('❌ Please enter a valid 6-digit code', 'error');
+        return;
+      }
+
+      showVerificationStatus('🔄 Verifying code...', 'info');
+      btn.classList.add('btn-loading');
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<span class="spinner"></span>Verifying...';
+
+      try {
+        const fd = new FormData();
+        fd.append('email', verificationEmail);
+        fd.append('code', code);
+
+        const resp = await fetch(`${API_BASE}/auth/verify-code`, { method: 'POST', body: fd });
+        const data = await resp.json().catch(() => ({}));
+
+        if (!resp.ok) {
+          showVerificationStatus('❌ ' + (data.detail || 'Verification failed'), 'error');
+          const modal = document.querySelector('#verificationModal > div');
+          gsap.fromTo(modal, { x: -8 }, { x: 0, duration: 0.45, ease: 'elastic.out(1,0.6)' });
+          return;
+        }
+
+        showVerificationStatus('✅ Email verified successfully!', 'success');
+        spawnPortalAt(btn);
+        setTimeout(() => {
+          closeModal('verificationModal');
+          showAlert('Account verified — you can now log in!', 'success');
+          document.getElementById('loginForm').reset();
+          document.getElementById('registerForm').reset();
+          openModal('authModal');
+          document.getElementById('loginForm').classList.remove('hidden');
+          document.getElementById('registerForm').classList.add('hidden');
+        }, 700);
+      } catch (err) {
+        showVerificationStatus('❌ Network error', 'error');
+      } finally {
+        btn.classList.remove('btn-loading');
+        btn.innerHTML = orig;
+      }
+    }
+
+    async function handleResendCode(){
+      if (resendCooldownActive || !verificationEmail) return;
+
+      const btn = document.getElementById('resendBtn');
+      showVerificationStatus('🔄 Sending new code...', 'info');
+      btn.disabled = true;
+
+      try {
+        const fd = new FormData();
+        fd.append('email', verificationEmail);
+
+        const resp = await fetch(`${API_BASE}/auth/resend-code`, { method: 'POST', body: fd });
+        const data = await resp.json().catch(() => ({}));
+
+        if (!resp.ok) {
+          showVerificationStatus('❌ ' + (data.detail || 'Resend failed'), 'error');
+          btn.disabled = false;
+          return;
+        }
+
+        showVerificationStatus('✅ New code sent to your email', 'success');
+        document.getElementById('verificationCode').value = '';
+        document.getElementById('verificationCode').focus();
+        startResendCooldown();
+      } catch (err) {
+        showVerificationStatus('❌ Network error', 'error');
+        btn.disabled = false;
+      }
+    }
+
+    /* ========== CHECKOUT ========== */
+    async function initiateCheckout(){
+      if (!state.authToken || !state.currentSession){ showAlert('You need an active session and to be signed in', 'error'); return; }
+      try {
+        const payload = { session_id: state.currentSession, item: { variant_id: 7671, product_name: 'Custom Design', quantity:1 }, recipient: { name: 'Customer', address1:'123 Main St', city:'City', country_code:'US' } };
+        const resp = await fetch(`${API_BASE}/orders/initiate-checkout`, { method:'POST', headers: { 'Authorization': `Bearer ${state.authToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!resp.ok) { const err = await resp.json().catch(()=>({})); throw new Error(err.detail || 'Checkout failed'); }
+        const data = await resp.json();
+        document.getElementById('orderTotal').textContent = `$${(data.total_cost || 0).toFixed(2)}`;
+        showAlert('Checkout created — follow Stripe flow (client secret returned)', 'success');
+        closeModal('checkoutModal');
+      } catch (err){ showAlert('Checkout error: ' + (err.message || 'unknown'), 'error'); }
+    }
+
+    /* ========== SHOW/HIDE DESIGN SECTION ========== */
+    function showDesignSection(){
+      window.location.href = 'chat.html';
+    }
+
+    function closeChatWithPortal(){
+      const homeBtn = document.getElementById('homeBtn');
+      spawnPortalAt(homeBtn || document.getElementById('startDesigningBtn'));
+      setTimeout(()=> { window.location.href = 'index.html'; }, 420);
+    }
+  </script>
+</body>
+</html>
